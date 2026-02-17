@@ -2,189 +2,109 @@
 
 ## Overview
 
-WandStore uses a **distributed edge architecture** built on Cloudflare's global network. The system generates personalized storefront UIs at runtime using Durable Objects for stateful compute.
+WandStore uses Cloudflare Workers as an edge router, Cloudflare Containers for LLM-powered UI generation, and a shared Durable Object pool to orchestrate background jobs.
 
-## Architecture Diagram
+## Request Flow
+
+### First Visit (Cache MISS)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                                    CLIENT LAYER                                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │   Browser    │  │ Mobile App   │  │   API Client │  │  Webhook     │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-└─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────────┘
-          │                 │                 │                 │
-          └─────────────────┴─────────┬───────┴─────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                                   EDGE LAYER                                         │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐    │
-│  │                      CLOUDFLARE WORKER (API Gateway)                         │    │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │    │
-│  │  │   Router    │  │   Cache     │  │     Auth    │  │ Rate Limit  │        │    │
-│  │  │             │  │     API     │  │             │  │             │        │    │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │    │
-│  └─────────────────────────────────────────────────────────────────────────────┘    │
-│                                      │                                               │
-│                                      ▼                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐    │
-│  │                         STATIC ASSETS (R2 / Cache)                           │    │
-│  │  • CSS/JS bundles  • Images  • Fonts  • Store themes                         │    │
-│  └─────────────────────────────────────────────────────────────────────────────┘    │
-└──────────────────────────────────────┬──────────────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                              STATEFUL COMPUTE LAYER                                  │
-│                                                                                      │
-│  ┌─────────────────────────────┐    ┌─────────────────────────────────────────┐     │
-│  │    STORE CONFIG DO          │    │         SHOPPER DO (Per-Shopper)        │     │
-│  │  ┌───────────────────────┐  │    │  ┌─────────────────────────────────┐   │     │
-│  │  │ • Base templates      │  │    │  │ • Shopper preferences           │   │     │
-│  │  │ • Theme configuration │  │    │  │ • Browsing history              │   │     │
-│  │  │ • Product cache       │  │    │  │ • Cart state                    │   │     │
-│  │  │ • Store settings      │  │    │  │ • Generated HTML cache          │   │     │
-│  │  └───────────────────────┘  │    │  │ • SQLite persistence            │   │     │
-│  │                             │    │  └─────────────────────────────────┘   │     │
-│  │  One per store              │    │                                       │     │
-│  └─────────────────────────────┘    │  One per active shopper               │     │
-│                                     └───────────────────────────────────────┘     │
-│                                                                                      │
-└──────────────────────────────────────┬──────────────────────────────────────────────┘
-                                       │
-                    ┌──────────────────┼──────────────────┐
-                    │                  │                  │
-                    ▼                  ▼                  ▼
-┌────────────────────────┐ ┌──────────────────┐ ┌──────────────────┐
-│      SHOPIFY           │ │   CLOUDFLARE     │ │   AI GATEWAY     │
-│  ┌──────────────────┐  │ │  ┌────────────┐  │ │  ┌────────────┐  │
-│  │ Storefront API   │  │ │  │     R2     │  │ │  │  LLM API   │  │
-│  │ • Products       │  │ │  │ • Assets   │  │ │  │ • Prompts  │  │
-│  │ • Collections    │  │ │  │ • Themes   │  │ │  │ • Caching  │  │
-│  │ • Checkout       │  │ │  │ • Backups  │  │ │  │ • Logging  │  │
-│  └──────────────────┘  │ │  └────────────┘  │ │  └────────────┘  │
-└────────────────────────┘ └──────────────────┘ └──────────────────┘
+1. GET /s/magic-wands?shopper=abc123
+   │
+   ▼
+2. Worker checks R2 → KV for cached UI
+   └── MISS → continue
+   │
+   ▼
+3. Worker returns fallback template immediately (non-blocking)
+   │
+   ▼
+4. ctx.waitUntil → triggerBackgroundGeneration()
+   │
+   ▼
+5. selectPoolMember("abc123", 10) → "pool-3" (hash-based)
+   │
+   ▼
+6. POST /trigger to pool-3 DO → enqueue job, setAlarm(Date.now())
+   │
+   ▼
+7. DO alarm fires → dequeue job → proxyToContainer(/generate)
+   │
+   ▼
+8. Container calls Kimi LLM → generates personalized HTML (~100s)
+   │
+   ▼
+9. DO stores result in KV (1hr TTL) + R2 (permanent)
+   │
+   ▼
+10. If more jobs in queue → setAlarm(Date.now()) → process next
+```
+
+### Return Visit (Cache HIT)
+
+```
+1. GET /s/magic-wands?shopper=abc123
+   │
+   ▼
+2. Worker checks R2 → HIT → return cached AI-generated HTML
+   (Total latency: ~10-50ms)
 ```
 
 ## Component Details
 
-### 1. API Gateway (Cloudflare Worker)
+### Worker (`worker/src/index.ts`)
 
-The entry point for all requests. Handles:
-- **Routing:** Route requests to appropriate handlers
-- **Caching:** Check Cache API before hitting DOs
-- **Authentication:** Validate shopper sessions
-- **Rate Limiting:** Prevent abuse
+Single file containing all edge logic:
 
-### 2. Durable Objects
+- **Routes:** `/s/{store}`, `/health`, `/debug/*`, `/api/*`, `/webhook/*`
+- **Cache strategy:** R2 first (long-term), then KV (edge cache), then fallback template
+- **Pool routing:** `selectPoolMember()` hashes shopperId to `pool-0..pool-9`
+- **Fallback:** If pool member returns 429 (queue full), tries next member
 
-#### Store Config DO
-- **One per store**
-- Holds base templates and theme configuration
-- Caches product data from Shopify
-- Manages store-wide settings
+### Durable Object (`AIGeneratorContainer`)
 
-#### Shopper DO
-- **One per active shopper**
-- Maintains shopper state in SQLite
-- Generates personalized HTML
-- Caches generated output for 60 seconds
+Each pool member is a DO instance managing one container:
 
-### 3. Shopify Integration
+- **`POST /trigger`:** Enqueue job to `jobQueue` array in DO storage. Return 429 if queue >= `MAX_QUEUE_DEPTH` (100).
+- **`alarm()`:** Dequeue first job, proxy to container `/generate`, store result in KV+R2, chain next alarm if queue non-empty.
+- **`proxyToContainer()`:** Start container with `enableInternet: true` + env vars (secrets), set inactivity timeout (5 min), proxy request to port 8080.
 
-- **Storefront API:** Product catalog, collections, checkout
-- **Admin API:** Inventory management, order processing
-- **Webhooks:** Real-time updates for cache invalidation
+### Container (`container/src/generate.ts`)
 
-### 4. Storage (R2)
+Stateless Express server:
 
-- Static assets (CSS, JS, images)
-- Store theme files
-- Generated storefront snapshots (future)
+- **`GET /health`:** Health check
+- **`POST /generate`:** Takes `{jobId, storeSlug, shopperId, preferences}`, detects persona, builds prompt, calls Kimi LLM, returns `{success, html, persona, source}`
+- **Personas:** minimalist, explorer, dealhunter, loyalist
+- **Fallback:** Template-based generation if LLM fails
 
-## Data Flow
+### Storage
 
-### Shopper Request Flow
+| Store | Binding | Purpose | TTL |
+|-------|---------|---------|-----|
+| KV `UI_CACHE` | `UI_CACHE` | Edge-cached generated UIs (`ui:{store}:{shopper}`) | 1 hour |
+| KV `GENERATION_QUEUE` | `GENERATION_QUEUE` | Job records, debug breadcrumbs, error logs | 1 hour |
+| KV `SHOPPER_SESSIONS` | `SHOPPER_SESSIONS` | Shopper session data (`session:{shopper}`) | No expiry |
+| R2 `wandstore-generated-ui` | `UI_STORAGE` | Long-term HTML storage (`generated/{store}:{shopper}.html`) | Permanent |
 
-```
-1. Shopper requests /s/magic-wands?shopper=abc123
-   │
-   ▼
-2. Worker checks Cache API
-   ├── HIT → Return cached HTML
-   └── MISS → Continue
-   │
-   ▼
-3. Worker routes to Shopper DO
-   │
-   ▼
-4. Shopper DO checks in-memory cache
-   ├── FRESH (< 60s) → Return cached HTML
-   └── STALE → Continue
-   │
-   ▼
-5. Shopper DO fetches data
-   ├── From SQLite (shopper state)
-   └── From Shopify (products)
-   │
-   ▼
-6. Shopper DO renders HTML template
-   │
-   ▼
-7. Response returned to Worker
-   │
-   ▼
-8. Worker stores in Cache API
-   │
-   ▼
-9. HTML returned to shopper
-```
+## Pool Configuration
 
-### Cache Invalidation Flow
+| Var | Default | Purpose |
+|-----|---------|---------|
+| `POOL_SIZE` | `10` | Number of shared container pool members |
+| `MAX_QUEUE_DEPTH` | `100` | Max queued jobs per pool member before 429 |
+| `CONTAINER_INACTIVITY_TIMEOUT_MS` | `300000` | Container idle timeout (5 min) |
+| `CACHE_TTL_SECONDS` | `3600` | KV cache TTL (1 hour) |
 
-```
-1. Shopify webhook (product updated)
-   │
-   ▼
-2. Worker receives webhook
-   │
-   ▼
-3. Purge Cache API for affected stores
-   │
-   ▼
-4. Notify Store DO to refresh product cache
-   │
-   ▼
-5. Shopper DOs regenerate on next request
-```
+## Endpoints
 
-## Performance Targets
-
-| Metric | Target | Notes |
-|--------|--------|-------|
-| Edge Cache Hit | < 10ms | Cached responses |
-| DO Warm Response | 10-50ms | In-memory cache hit |
-| DO Cold Response | 50-100ms | SQLite + generation |
-| Full Generation | < 200ms | Fetch + render |
-| Time to First Byte | < 100ms | Global average |
-
-## Security Considerations
-
-- All HTML output is escaped to prevent XSS
-- Shopper IDs are validated before DO lookup
-- Shopify API tokens are stored as Worker secrets
-- Rate limiting per IP and per shopper
-
-## Future Enhancements
-
-- [ ] WebSocket hibernation for real-time features
-- [ ] Container-based AI inference for advanced personalization
-- [ ] Edge-side A/B testing
-- [ ] Multi-region DO placement
-
----
-
-*See also:*
-- [Infrastructure Setup](../infrastructure/)
-- [Architecture Decisions](../decisions/)
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/s/{store}?shopper={id}` | GET | Main storefront route |
+| `/health` | GET | Health check |
+| `/debug/container` | GET | Test container health via `pool-0` |
+| `/debug/generate` | GET | Test full LLM generation via pool |
+| `/debug/errors?shopper=X&store=Y` | GET | Check generation errors/breadcrumbs |
+| `/api/generation/status?shopper=X&store=Y` | GET | Check if UI has been generated |
+| `/api/shopper/track` | POST | Track shopper activity |
+| `/webhook/generation-complete` | POST | Legacy webhook handler |

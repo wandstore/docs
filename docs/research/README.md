@@ -1,28 +1,10 @@
 # Research
 
-Research documents, market analysis, and technical investigations.
+Historical technical investigations. These informed early decisions but some conclusions were superseded by implementation experience.
 
-## Research Documents
+| Document | Topic | Status |
+|----------|-------|--------|
+| [Runtime UI Generation](./runtime-ui-generation.md) | DO-based storefront generation options | Historical — we chose LLM generation via Containers instead |
+| [Cloudflare Containers](./cloudflare-containers.md) | Container performance evaluation | Historical — cold start concern was moot for background generation |
 
-| Document | Topic | Date | Status |
-|----------|-------|------|--------|
-| [Runtime UI Generation](./runtime-ui-generation.md) | DO-based storefront generation | 2026-02-17 | Complete |
-| [Cloudflare Containers](./cloudflare-containers.md) | Container evaluation | 2026-02-17 | Complete |
-
-## Market Research
-
-*To be added:*
-- Competitive analysis
-- Target persona research
-- E-commerce trends
-
-## Technical Research
-
-*To be added:*
-- Edge computing patterns
-- Personalization algorithms
-- Shopify headless best practices
-
----
-
-*Have research to add? Create a new file and update the index.*
+See [ADR-003](../decisions/adr-003-container-pool-architecture.md) for the current architecture.

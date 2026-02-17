@@ -1,95 +1,23 @@
 # ADR-002: Cloudflare Containers Evaluation
 
 ## Status
-- **Accepted** — Evaluated and rejected for MVP, kept for future consideration
+- **Superseded by [ADR-003](./adr-003-container-pool-architecture.md)**
 
-## Context
+## Original Decision
 
-Cloudflare Containers (now in public beta) offer serverless containers that run on Cloudflare's global network. We evaluated whether to use Containers for WandStore's runtime UI generation.
+Do NOT use Containers for the MVP due to cold start latency (1-5s). Use Durable Objects with HTML templates instead.
 
-Key question: Should we use Containers instead of Durable Objects for storefront generation?
+## What Actually Happened
 
-## Decision
+We adopted Containers as the core generation mechanism. The cold start concern turned out to be acceptable because:
 
-We will **NOT use Containers for the MVP**. We will use Durable Objects instead.
+1. **Generation is non-blocking.** The first visit returns a fallback template instantly; the container runs in the background.
+2. **5-min inactivity timeout** keeps containers warm for subsequent requests.
+3. **Shared pool of 10** means containers are reused across shoppers, not cold-started per shopper.
+4. **LLM calls take ~100s** — a 3s cold start is negligible relative to the total generation time.
 
-Containers will be revisited for specific resource-intensive workloads (AI inference, image processing) in future phases.
+See [ADR-003](./adr-003-container-pool-architecture.md) for the current architecture.
 
-## Evaluation
+## Original Research (Historical)
 
-### Container Characteristics
-
-| Feature | Description |
-|---------|-------------|
-| Runtime | Full Linux containers (Docker-compatible) |
-| Cold Start | 1-5 seconds |
-| Warm Response | 10-50ms |
-| Languages | Any (Node.js, Python, Go, etc.) |
-| Integration | Controlled via Workers + Durable Objects |
-
-### Performance Comparison
-
-| Platform | Cold Start | Warm Response |
-|----------|------------|---------------|
-| Workers | 0-5ms | 1-10ms |
-| Durable Objects | 0-5ms | 1-10ms |
-| Containers (lite) | 500ms-2s | 10-50ms |
-| Containers (standard-2) | 1-5s | 10-50ms |
-
-### Why Containers Are Slower
-
-```
-Container Cold Start Timeline:
-├── Image Pull (if not cached): 500ms - 2s
-├── Container Runtime Init:     200ms - 500ms
-├── Application Boot:           300ms - 2s
-└── First Request Handling:     10ms - 50ms
-    TOTAL: 1-5 seconds
-```
-
-## Consequences
-
-### Positive (of not using Containers for MVP)
-
-- **Faster page loads:** 5ms cold start vs. 1-5s for Containers
-- **Lower costs:** No container warmup costs
-- **Simpler architecture:** Single technology (Durable Objects)
-- **Faster development:** No Docker, image management, etc.
-
-### Negative (trade-offs)
-
-- **Limited template engines:** Cannot use EJS, Handlebars, etc.
-- **No multi-language support:** Limited to JavaScript/TypeScript
-- **Future migration:** May need to add Containers later for AI features
-
-## Future Use Cases for Containers
-
-We will revisit Containers when WandStore needs:
-
-1. **AI-powered personalization** — LLM inference requires more resources
-2. **Image generation/processing** — Product visuals, thumbnails
-3. **PDF generation** — Invoices, reports
-4. **Video processing** — Product demos
-
-### Hybrid Architecture (Future)
-
-```
-Shopper Request → Worker → Route Decision
-                              │
-              ┌───────────────┼───────────────┐
-              │               │               │
-              ▼               ▼               ▼
-            Standard      Personalized     AI Features
-            (DO)          (DO)             (Container)
-            < 50ms        < 100ms          Async
-```
-
-## References
-
-- [Cloudflare Containers Research](../../research/cloudflare-containers.md)
-- [Cloudflare Containers Documentation](https://developers.cloudflare.com/containers/)
-- Issue #14: Runtime UI Generation
-
----
-
-*Decided: 2026-02-17*
+The container performance research in [research/cloudflare-containers.md](../research/cloudflare-containers.md) is still accurate for the raw numbers. The conclusion was wrong because it didn't account for non-blocking background generation.

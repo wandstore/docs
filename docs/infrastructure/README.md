@@ -1,253 +1,106 @@
 # Infrastructure
 
-## Overview
-
-WandStore runs entirely on Cloudflare's edge infrastructure. This document covers the setup, deployment pipelines, and monitoring.
-
 ## Cloudflare Services
 
 | Service | Purpose | Status |
 |---------|---------|--------|
-| Workers | Edge compute (API Gateway) | ✅ Active |
-| Durable Objects | Stateful compute | ✅ Active |
-| R2 | Object storage (assets) | ✅ Active |
-| AI Gateway | LLM API management | ✅ Active |
-| Cache API | Edge caching | ✅ Active |
-| Analytics | Monitoring & logs | ✅ Active |
+| Workers | Edge routing, cache checks, fallback templates | Active |
+| Durable Objects | Container pool orchestration (alarm-based job queue) | Active |
+| Containers | AI UI generation (Node.js + Express + Kimi LLM) | Active |
+| KV | Short-term edge caching (3 namespaces) | Active |
+| R2 | Long-term generated UI storage | Active |
+| Container Registry | `registry.cloudflare.com` — auto-pushed by `wrangler deploy` | Active |
 
-## Account Information
+## Account
 
 - **Account ID:** `61709e52b392b237c89ee049f6a0e4a5`
-- **Primary Zone:** `wandstore.io`
-- **Workers Subdomain:** `wandstore.workers.dev`
+- **Worker URL:** `https://wandstore-runtime.yo-617.workers.dev`
 
-## Workers
+## Worker
 
-### Production Workers
+| Name | Entry | Bindings |
+|------|-------|----------|
+| `wandstore-runtime` | `worker/src/index.ts` | AI_GENERATOR, UI_CACHE, GENERATION_QUEUE, SHOPPER_SESSIONS, UI_STORAGE |
 
-| Worker | Purpose | Bindings |
-|--------|---------|----------|
-| `wandstore` | Main storefront API | SHOPPER_DO, STORE_DO, R2 |
-| `wandstore-agents` | Agent coordination | AI Gateway, R2 |
-| `wandstore-landing` | Marketing site | R2 |
+## Durable Object
 
-### Worker Configuration
+| Class | Purpose |
+|-------|---------|
+| `AIGeneratorContainer` | Manages one container per pool member. Handles job queue, alarm processing, container lifecycle. |
 
-```toml
-# wrangler.toml (production)
-name = "wandstore"
-main = "src/worker.ts"
-compatibility_date = "2024-01-01"
+Instances are named `pool-0` through `pool-9` (configurable via `POOL_SIZE`).
 
-[[durable_objects.bindings]]
-name = "SHOPPER_STOREFRONT"
-class_name = "ShopperStorefront"
+## Container
 
-[[durable_objects.bindings]]
-name = "STORE_CONFIG"
-class_name = "StoreConfig"
+| Name | Image Source | Instance Type | Max Instances |
+|------|-------------|---------------|---------------|
+| `ai-generator` | `../container/Dockerfile` | `basic` (0.25 vCPU, 1 GiB) | 50 |
 
-[[migrations]]
-tag = "v1"
-new_classes = ["ShopperStorefront", "StoreConfig"]
+Built and pushed to `registry.cloudflare.com` automatically by `wrangler deploy`.
 
-[vars]
-SHOPIFY_STORE_DOMAIN = "wandstore.myshopify.com"
+## KV Namespaces
 
-[env.staging]
-name = "wandstore-staging"
+| Binding | ID | Key Pattern | Purpose |
+|---------|----|-------------|---------|
+| `UI_CACHE` | `943f5ce4...` | `ui:{store}:{shopper}` | Cached generated UIs (1hr TTL) |
+| `GENERATION_QUEUE` | `5a422f31...` | `job:*`, `error:*`, `debug:*` | Job records + debug logs |
+| `SHOPPER_SESSIONS` | `5634e37d...` | `session:{shopper}` | Shopper state |
 
-[env.staging.vars]
-SHOPIFY_STORE_DOMAIN = "wandstore-staging.myshopify.com"
-```
+## R2 Bucket
 
-## Durable Objects
+| Binding | Bucket Name | Key Pattern |
+|---------|-------------|-------------|
+| `UI_STORAGE` | `wandstore-generated-ui` | `generated/{store}:{shopper}.html` |
 
-### Class Definitions
+## Secrets
 
-```typescript
-// ShopperStorefront DO
-export class ShopperStorefront {
-  // One instance per shopper
-  // Handles: personalization, HTML generation, cart state
-}
+Set via `wrangler secret put` or the `set-secrets.yml` workflow:
 
-// StoreConfig DO
-export class StoreConfig {
-  // One instance per store
-  // Handles: templates, themes, product cache
-}
-```
+| Secret | Required | Purpose |
+|--------|----------|---------|
+| `KIMI_API_KEY` | Yes | Moonshot AI API key for LLM generation |
+| `SHOPIFY_STORE` | No | Shopify store domain |
+| `SHOPIFY_ACCESS_TOKEN` | No | Shopify Storefront API token |
+| `WEBHOOK_SECRET` | No | Webhook authentication |
+| `AI_GATEWAY_URL` | No | Cloudflare AI Gateway endpoint |
 
-### Scaling Considerations
+## Environment Variables
 
-- DOs scale automatically per unique ID
-- SQLite storage is persistent
-- In-memory state is lost on hibernation (use SQLite for persistence)
-- WebSocket hibernation available for real-time features
+Defined in `wrangler.toml` `[vars]`:
 
-## R2 Buckets
+| Var | Value | Purpose |
+|-----|-------|---------|
+| `ENVIRONMENT` | `production` | Environment identifier |
+| `CACHE_TTL_SECONDS` | `3600` | KV cache TTL |
+| `POOL_SIZE` | `10` | Container pool members |
+| `CONTAINER_INACTIVITY_TIMEOUT_MS` | `300000` | Container idle timeout (5 min) |
+| `MAX_QUEUE_DEPTH` | `100` | Max jobs per pool member queue |
 
-| Bucket | Purpose | Public Access |
-|--------|---------|---------------|
-| `wandstore-assets` | Static assets (CSS, JS, images) | Yes |
-| `wandstore-themes` | Store theme files | No |
-| `wandstore-backups` | DO backups, snapshots | No |
+## CI/CD
 
-### R2 Configuration
+### `deploy-container.yml` (automatic on push to main)
 
-```toml
-[[r2_buckets]]
-binding = "ASSETS"
-bucket_name = "wandstore-assets"
+Triggers on changes to `wandstore-runtime/container/**`, `wandstore-runtime/worker/**`, or the workflow itself.
 
-[[r2_buckets]]
-binding = "THEMES"
-bucket_name = "wandstore-themes"
-```
+Steps:
+1. Checkout + setup Node.js 20
+2. Install + build container TypeScript
+3. Install worker dependencies
+4. Setup Docker
+5. Install Wrangler
+6. `wrangler deploy` — builds container image, pushes to `registry.cloudflare.com`, deploys worker + container
 
-## AI Gateway
+### `set-secrets.yml` (manual dispatch)
 
-### Configuration
+Sets `KIMI_API_KEY` via `wrangler secret put`.
 
-- **Gateway Name:** `wandstore-ai`
-- **Providers:** OpenAI, Anthropic (via Cloudflare AI Gateway)
-- **Features:** Caching, rate limiting, logging
+## Cost Estimates
 
-### Usage
-
-```typescript
-// Example AI Gateway call
-const response = await fetch(
-  `https://gateway.ai.cloudflare.com/v1/${accountId}/wandstore-ai/openai/chat/completions`,
-  {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${env.AI_GATEWAY_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  }
-);
-```
-
-## Deployment Pipeline
-
-### GitHub Actions Workflow
-
-```yaml
-name: Deploy
-
-on:
-  push:
-    branches: [main, staging]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Run tests
-        run: npm test
-        
-      - name: Deploy to Staging
-        if: github.ref == 'refs/heads/staging'
-        run: npx wrangler deploy --env staging
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          
-      - name: Deploy to Production
-        if: github.ref == 'refs/heads/main'
-        run: npx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-```
-
-### Deployment Checklist
-
-- [ ] Tests pass
-- [ ] Migrations reviewed
-- [ ] Secrets updated (if needed)
-- [ ] Staging deployment verified
-- [ ] Production deployment approved
-
-## Monitoring
-
-### Cloudflare Analytics
-
-- **Worker Metrics:** Requests, errors, CPU time
-- **DO Metrics:** Active instances, storage usage
-- **R2 Metrics:** Requests, egress
-
-### Custom Logging
-
-```typescript
-// Structured logging from Workers
-console.log(JSON.stringify({
-  level: 'info',
-  message: 'Shopper storefront generated',
-  shopperId,
-  storeSlug,
-  generationTimeMs,
-  timestamp: new Date().toISOString(),
-}));
-```
-
-### Alerts
-
-| Condition | Severity | Action |
-|-----------|----------|--------|
-| Error rate > 1% | Warning | Slack notification |
-| Error rate > 5% | Critical | PagerDuty |
-| P95 latency > 500ms | Warning | Review DO performance |
-| DO storage > 80% | Warning | Plan cleanup |
-
-## Secrets Management
-
-Secrets are stored in Cloudflare and bound to Workers:
-
-```bash
-# Set a secret
-wrangler secret put SHOPIFY_STOREFRONT_TOKEN
-
-# List secrets
-wrangler secret list
-```
-
-### Required Secrets
-
-| Secret | Description |
-|--------|-------------|
-| `SHOPIFY_STOREFRONT_TOKEN` | Shopify Storefront API access |
-| `SHOPIFY_ADMIN_TOKEN` | Shopify Admin API access |
-| `AI_GATEWAY_TOKEN` | Cloudflare AI Gateway |
-
-## Cost Estimation
-
-### Monthly (1M requests/day)
-
-| Service | Estimated Cost |
-|---------|----------------|
-| Workers (Paid Plan) | $5 |
-| Durable Objects | $20-50 |
-| R2 | $5-10 |
-| AI Gateway | $10-30 |
-| **Total** | **$40-95** |
-
----
-
-*See also:*
-- [Architecture Overview](../architecture/)
-- [Developer Onboarding](../guides/developer-onboarding.md)
+| Component | Monthly Cost |
+|-----------|-------------|
+| Workers Paid Plan | $5 |
+| Containers (10 pool members, ~360 jobs/hr capacity) | $50-200 |
+| KV | $5-10 |
+| R2 | $1-5 |
+| Kimi API (~$3.40/1M tokens) | $100-500 |
+| **Total** | **$160-720** |
