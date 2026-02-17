@@ -1,0 +1,24 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gridGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Grid cells forming abstract W pattern -->
+  <!-- Row 1 -->
+  <rect x="12" y="12" width="22" height="22" rx="4" fill="url(#gridGradient)"/>
+  <rect x="39" y="12" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.15"/>
+  <rect x="66" y="12" width="22" height="22" rx="4" fill="url(#gridGradient)"/>
+  
+  <!-- Row 2 -->
+  <rect x="12" y="39" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.15"/>
+  <rect x="39" y="39" width="22" height="22" rx="4" fill="url(#gridGradient)"/>
+  <rect x="66" y="39" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.15"/>
+  
+  <!-- Row 3 -->
+  <rect x="12" y="66" width="22" height="22" rx="4" fill="url(#gridGradient)"/>
+  <rect x="39" y="66" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.15"/>
+  <rect x="66" y="66" width="22" height="22" rx="4" fill="url(#gridGradient)"/>
+</svg>
