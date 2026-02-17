@@ -1,147 +1,85 @@
 # Deployment Runbook
 
-Step-by-step guide for deploying WandStore to production.
+## How Deployment Works
 
-## Pre-Deployment Checklist
+Push to `main` triggers the `deploy-container.yml` GitHub Actions workflow, which:
 
-- [ ] All tests passing (`npm test`)
-- [ ] Type checking passes (`npm run typecheck`)
-- [ ] Linting passes (`npm run lint`)
-- [ ] Changes reviewed and approved (PR merged)
-- [ ] Staging deployment verified
-- [ ] Database migrations reviewed (if applicable)
-- [ ] Secrets updated (if needed)
+1. Builds container TypeScript (`npm run build` in `container/`)
+2. Installs worker dependencies (`npm install` in `worker/`)
+3. Runs `wrangler deploy` from `worker/` — this builds the Docker image, pushes it to `registry.cloudflare.com`, and deploys the worker + container
 
-## Deployment Process
+No staging environment exists yet. All deploys go straight to production.
 
-### 1. Prepare Release
+## Manual Deploy
 
 ```bash
-# Ensure you're on main and up to date
-git checkout main
-git pull origin main
-
-# Create a release tag
-git tag -a v1.2.3 -m "Release v1.2.3 - Description"
-git push origin v1.2.3
-```
-
-### 2. Deploy to Staging
-
-```bash
-# Deploy to staging environment
-npx wrangler deploy --env staging
-
-# Verify staging is healthy
-curl https://wandstore-staging.workers.dev/health
-```
-
-### 3. Run Smoke Tests on Staging
-
-```bash
-# Test storefront generation
-curl "https://wandstore-staging.workers.dev/s/test-store?shopper=test123"
-
-# Test Shopify integration
-curl "https://wandstore-staging.workers.dev/api/products"
-
-# Verify caching
-# (Make same request twice, second should be faster)
-```
-
-### 4. Deploy to Production
-
-```bash
-# Deploy to production
+cd wandstore-runtime/worker
 npx wrangler deploy
-
-# Or via GitHub Actions (preferred)
-git push origin main
 ```
 
-### 5. Verify Production
+## Pre-Deploy Checklist
+
+- [ ] TypeScript compiles cleanly: `cd worker && npx tsc --noEmit`
+- [ ] Container builds: `cd container && npm run build`
+- [ ] Changes committed and pushed to `main`
+
+## Post-Deploy Verification
 
 ```bash
-# Health check
-curl https://wandstore.io/health
+BASE=https://wandstore-runtime.yo-617.workers.dev
 
-# Check error rates in Cloudflare Dashboard
-# https://dash.cloudflare.com → Workers & Pages → wandstore
+# 1. Health check
+curl $BASE/health
+
+# 2. Container pool health
+curl $BASE/debug/container
+# Expect: poolMember: "pool-0", status: 200
+
+# 3. Full generation test (takes ~100s)
+curl $BASE/debug/generate
+# Expect: status: 200, source: "llm"
+
+# 4. Storefront route
+curl -I "$BASE/s/magic-wands?shopper=test-deploy"
+# Expect: X-Cache: MISS or HIT
 ```
 
-## Rollback Procedure
+## Rollback
 
-If issues are detected:
+Cloudflare keeps previous versions. Rollback via:
+
+1. **Cloudflare Dashboard:** Workers & Pages → wandstore-runtime → Deployments → Rollback
+2. **Git revert:** `git revert HEAD && git push` (triggers new deploy)
+
+## Updating Secrets
 
 ```bash
-# Rollback to previous version
-git checkout v1.2.2
-npx wrangler deploy
+# Via CLI
+cd wandstore-runtime/worker
+wrangler secret put KIMI_API_KEY
 
-# Or rollback via Cloudflare Dashboard
-# Workers & Pages → wandstore → Rollback
+# Via GitHub Actions
+# Trigger set-secrets.yml workflow manually with the new key
 ```
-
-## Post-Deployment
-
-- [ ] Monitor error rates for 30 minutes
-- [ ] Check latency metrics
-- [ ] Verify critical user flows
-- [ ] Announce deployment in #deployments Slack channel
-
-## Emergency Hotfix
-
-For critical issues requiring immediate fix:
-
-```bash
-# Create hotfix branch from main
-git checkout -b hotfix/critical-fix main
-
-# Make minimal fix
-# ... edit files ...
-
-# Deploy directly (bypass staging for critical fixes)
-npx wrangler deploy
-
-# Follow up with proper PR and staging deployment
-```
-
-## Monitoring During Deployment
-
-Watch these metrics in Cloudflare Dashboard:
-
-| Metric | Healthy | Warning | Critical |
-|--------|---------|---------|----------|
-| Error Rate | < 0.1% | 0.1-1% | > 1% |
-| P95 Latency | < 100ms | 100-500ms | > 500ms |
-| DO Instances | Stable | Fluctuating | Spike |
 
 ## Troubleshooting
 
-### Deployment Fails
+### Deploy Fails in CI
 
-1. Check wrangler logs: `npx wrangler deploy --verbose`
-2. Verify secrets are set: `npx wrangler secret list`
-3. Check for syntax errors: `npm run typecheck`
+Check the GitHub Actions log. Common issues:
+- Missing `CLOUDFLARE_API_TOKEN` secret in GitHub
+- Container build failure (TypeScript errors in `container/`)
+- Docker setup issues
 
-### High Error Rate After Deploy
+### Container Not Starting
 
-1. Check Cloudflare Logs: `npx wrangler tail`
-2. Rollback immediately if > 5% errors
-3. Investigate in staging
+Check `/debug/container`. If status is 503:
+- Container image may have failed to build — check CI logs
+- Container may be crashing on startup — check `wrangler tail` for errors
 
-### DO Migration Issues
+### Generation Returns Error
 
-If Durable Object migrations fail:
-
-```bash
-# List migrations
-npx wrangler d1 migrations list
-
-# Apply pending migrations
-npx wrangler d1 migrations apply
-```
-
----
-
-*For incident response, see [Incident Response](./incident-response.md)*
+Check `/debug/errors?shopper=X&store=Y`. Common issues:
+- `KIMI_API_KEY` not set or invalid
+- Kimi API rate limit hit
+- Container timeout (generation > inactivity timeout)

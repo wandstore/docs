@@ -1,169 +1,113 @@
 # Developer Onboarding
 
-Welcome to the WandStore team! This guide will get you set up and running locally.
-
 ## Prerequisites
 
-- Node.js 20+ 
+- Node.js 20+
 - Git
-- A Cloudflare account (with access to the WandStore account)
-- A Shopify partner account (for local development)
+- Cloudflare account with access to the WandStore account
+- `wrangler` CLI (`npm install -g wrangler`)
 
-## Setup Steps
-
-### 1. Clone the Repository
+## Clone and Explore
 
 ```bash
-git clone https://github.com/wandstore/storefront.git
-cd storefront
+git clone https://github.com/wandstore/infrastructure.git
+cd infrastructure/wandstore-runtime
 ```
 
-### 2. Install Dependencies
+### Project Structure
+
+```
+wandstore-runtime/
+├── worker/
+│   ├── src/index.ts       # Worker + Durable Object (all edge logic)
+│   ├── wrangler.toml      # Cloudflare config (bindings, vars, container)
+│   ├── package.json       # Worker dependencies
+│   └── tsconfig.json      # TypeScript config (ES2022)
+├── container/
+│   ├── Dockerfile         # Node.js 20-slim, non-root user, healthcheck
+│   ├── src/
+│   │   ├── generate.ts    # Express server: /health, /generate
+│   │   └── lib/
+│   │       ├── llm.ts     # Kimi/Claude API client with retry logic
+│   │       └── prompts.ts # Persona-based prompt builder
+│   ├── package.json       # Container dependencies (express, pino)
+│   └── tsconfig.json      # TypeScript config (CommonJS)
+├── shared/types.ts        # Shared interfaces
+└── scripts/
+    ├── kv-upload.js       # Upload templates to KV
+    └── kv-utils.js        # KV management (list, delete, export)
+```
+
+### Key Files
+
+| File | What It Does |
+|------|-------------|
+| `worker/src/index.ts` | Edge router, cache checks, pool routing, DO with job queue + alarm processing, fallback templates |
+| `container/src/generate.ts` | Persona detection, Kimi LLM calls, HTML generation, template fallback |
+| `container/src/lib/llm.ts` | LLM API integration with retry, timeout, token tracking |
+| `container/src/lib/prompts.ts` | System + user prompts per persona |
+| `worker/wrangler.toml` | All Cloudflare bindings (KV, R2, Container, DO) and env vars |
+
+## Local Development
 
 ```bash
+# Worker
+cd worker
 npm install
-```
+npx wrangler dev          # Starts on http://localhost:8787
 
-### 3. Configure Environment
-
-Copy the example environment file:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your credentials:
-
-```bash
-# Cloudflare
-CLOUDFLARE_ACCOUNT_ID=61709e52b392b237c89ee049f6a0e4a5
-
-# Shopify (use your development store)
-SHOPIFY_STORE_DOMAIN=your-dev-store.myshopify.com
-SHOPIFY_STOREFRONT_TOKEN=your_token_here
-```
-
-### 4. Authenticate with Cloudflare
-
-```bash
-npx wrangler login
-```
-
-### 5. Run Locally
-
-```bash
-npm run dev
-```
-
-The Worker will start on `http://localhost:8787`
-
-### 6. Test the Setup
-
-```bash
-curl http://localhost:8787/s/test-store?shopper=test123
-```
-
-You should see a generated storefront HTML response.
-
-## Project Structure
-
-```
-storefront/
-├── src/
-│   ├── worker.ts              # Main Worker entry
-│   ├── durable-objects/
-│   │   ├── shopper-do.ts      # Per-shopper DO
-│   │   └── store-do.ts        # Per-store DO
-│   ├── templates/
-│   │   └── storefront.ts      # HTML templates
-│   ├── shopify/
-│   │   ├── client.ts          # Storefront API client
-│   │   └── types.ts           # TypeScript types
-│   └── utils/
-│       └── html.ts            # HTML utilities
-├── tests/
-│   └── *.test.ts              # Test files
-├── wrangler.toml              # Cloudflare config
-└── package.json
-```
-
-## Development Workflow
-
-### Running Tests
-
-```bash
-# Run all tests
-npm test
-
-# Run with watch mode
-npm run test:watch
-
-# Run with coverage
-npm run test:coverage
-```
-
-### Type Checking
-
-```bash
-npm run typecheck
-```
-
-### Linting
-
-```bash
-npm run lint
-npm run lint:fix
-```
-
-### Local Testing with Staging Data
-
-To test against real Shopify data:
-
-```bash
-# Set staging credentials in .env
-SHOPIFY_STORE_DOMAIN=wandstore-staging.myshopify.com
-SHOPIFY_STOREFRONT_TOKEN=staging_token
-
-# Run with staging env
-npm run dev:staging
-```
-
-## Common Issues
-
-### "Cannot resolve module"
-
-Make sure all dependencies are installed:
-```bash
-rm -rf node_modules package-lock.json
+# Container (separate terminal)
+cd container
 npm install
+npm run build
+npm start                 # Starts on http://localhost:8080
 ```
 
-### "Durable Object not found"
+## Deploy
 
-Ensure migrations are applied:
+Deployment is automatic via GitHub Actions on push to `main`. To deploy manually:
+
 ```bash
-npx wrangler d1 migrations apply
+cd worker
+npx wrangler deploy
 ```
 
-### "Shopify API returns 401"
+This builds the container image, pushes it to `registry.cloudflare.com`, and deploys the worker.
 
-Check your Storefront API token:
-1. Go to Shopify Admin → Apps → Develop apps
-2. Verify the token has `read_products` scope
-3. Ensure the store URL is correct
+## Verify Deployment
 
-## Next Steps
+```bash
+# Health check
+curl https://wandstore-runtime.yo-617.workers.dev/health
 
-- Read the [Architecture Overview](../architecture/)
-- Review [ADR-001](../decisions/adr-001-runtime-ui-generation.md) to understand the tech choices
-- Pick up your first issue from the GitHub backlog
+# Container health via pool-0
+curl https://wandstore-runtime.yo-617.workers.dev/debug/container
 
-## Getting Help
+# Full LLM generation test (takes ~100s)
+curl https://wandstore-runtime.yo-617.workers.dev/debug/generate
 
-- **Technical questions:** Post in #dev-wandstore Slack channel
-- **Architecture questions:** Tag @architect in your PR
-- **Urgent issues:** DM the on-call engineer
+# Check errors for a shopper
+curl "https://wandstore-runtime.yo-617.workers.dev/debug/errors?shopper=test-1&store=magic-wands"
+```
 
----
+## How Generation Works
 
-*Last updated: 2026-02-17*
+1. Shopper hits `/s/magic-wands?shopper=abc123`
+2. Worker checks R2, then KV for cached AI UI — returns it if found
+3. On cache miss: returns fallback template instantly, triggers background generation
+4. `selectPoolMember("abc123", 10)` hashes shopperId to a pool member (e.g., `pool-3`)
+5. Worker POSTs `/trigger` to pool-3's DO — job is enqueued, alarm is set
+6. DO alarm fires, dequeues job, starts container (if not running), proxies to `/generate`
+7. Container detects persona, calls Kimi LLM, returns generated HTML
+8. DO stores HTML in KV (1hr) + R2 (permanent), updates shopper session
+9. If more jobs queued, chains another alarm
+
+## Secrets
+
+Secrets are set via `wrangler secret put` or the `set-secrets.yml` GitHub Actions workflow:
+
+```bash
+wrangler secret put KIMI_API_KEY
+```
+
+Required: `KIMI_API_KEY`. Optional: `SHOPIFY_STORE`, `SHOPIFY_ACCESS_TOKEN`, `AI_GATEWAY_URL`.
