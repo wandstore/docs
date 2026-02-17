@@ -1,0 +1,10 @@
+# Audio Transcription Configuration
+# Auto-transcribe audio messages using faster-whisper
+
+AUDIO_TRANSCRIPTION_ENABLED=true
+AUDIO_TRANSCRIPTION_MODEL=base
+AUDIO_TRANSCRIPTION_DEVICE=cpu
+AUDIO_TRANSCRIPTION_COMPUTE_TYPE=int8
+
+# Python transcription command
+TRANSCRIPTION_CMD="python3 -c \"from faster_whisper import WhisperModel; model = WhisperModel('base', device='cpu', compute_type='int8'); segments, info = model.transcribe('{audio_path}'); print('[Transcription]'); [print(segment.text) for segment in segments]\""

@@ -1,0 +1,33 @@
+<svg viewBox="0 0 240 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wordmarkGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#d97706"/>
+      <stop offset="50%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <filter id="textGlow">
+      <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- W with wand styling -->
+  <g transform="translate(5, 5)">
+    <!-- Wand stroke forming W -->
+    <path d="M10 45 Q15 25 25 10 Q35 25 40 45" 
+          stroke="url(#wordmarkGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M40 45 Q45 25 55 10 Q65 25 70 45" 
+          stroke="url(#wordmarkGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <!-- Spark at top -->
+    <circle cx="55" cy="10" r="4" fill="#fbbf24" filter="url(#textGlow)"/>
+    <!-- Small particles -->
+    <circle cx="52" cy="6" r="1.5" fill="#fbbf24" opacity="0.6"/>
+    <circle cx="58" cy="8" r="1" fill="#fbbf24" opacity="0.4"/>
+  </g>
+  
+  <!-- andStore text -->
+  <text x="85" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="500" fill="#ffffff" letter-spacing="0.02em">andStore</text>
+</svg>

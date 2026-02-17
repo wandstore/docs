@@ -1,0 +1,29 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wandGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#d97706"/>
+      <stop offset="50%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Wand stroke forming abstract W -->
+  <path d="M20 80 Q30 50 50 20 Q70 50 80 80" 
+        stroke="url(#wandGradient)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  
+  <!-- Magic spark at tip -->
+  <circle cx="50" cy="20" r="6" fill="#fbbf24" filter="url(#glow)"/>
+  
+  <!-- Generative particles -->
+  <circle cx="45" cy="15" r="2" fill="#fbbf24" opacity="0.6"/>
+  <circle cx="55" cy="18" r="1.5" fill="#fbbf24" opacity="0.4"/>
+  <circle cx="48" cy="12" r="1" fill="#fbbf24" opacity="0.3"/>
+  <circle cx="52" cy="10" r="0.8" fill="#fbbf24" opacity="0.5"/>
+</svg>

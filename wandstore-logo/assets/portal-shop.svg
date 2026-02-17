@@ -1,0 +1,30 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="portalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <radialGradient id="innerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:0.1"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Outer portal frame -->
+  <rect x="15" y="10" width="70" height="80" rx="12" 
+        stroke="url(#portalGradient)" stroke-width="6" fill="none"/>
+  
+  <!-- Inner glow -->
+  <rect x="22" y="17" width="56" height="66" rx="8" 
+        fill="url(#innerGlow)"/>
+  
+  <!-- Door split with light -->
+  <line x1="50" y1="17" x2="50" y2="83" stroke="#0a0a0a" stroke-width="4"/>
+  
+  <!-- Light emanating from center -->
+  <ellipse cx="50" cy="50" rx="15" ry="20" fill="#fbbf24" opacity="0.2"/>
+  <line x1="50" y1="35" x2="50" y2="65" stroke="#fbbf24" stroke-width="3" opacity="0.8" stroke-linecap="round"/>
+  
+  <!-- Spark at center -->
+  <circle cx="50" cy="50" r="4" fill="#fbbf24"/>
+</svg>

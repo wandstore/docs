@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WandStore Logo Concepts</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      color: #9ca3af;
+      margin-bottom: 40px;
+      font-size: 1.1rem;
+    }
+    
+    .concept-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-bottom: 60px;
+    }
+    
+    .concept-card {
+      background: #111111;
+      border: 1px solid #1f1f1f;
+      border-radius: 16px;
+      padding: 30px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    
+    .concept-card:hover {
+      transform: translateY(-4px);
+      border-color: #f59e0b;
+    }
+    
+    .concept-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .concept-icon {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a0a;
+      border-radius: 12px;
+      border: 1px solid #1f1f1f;
+    }
+    
+    .concept-icon svg {
+      width: 40px;
+      height: 40px;
+    }
+    
+    .concept-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #f59e0b;
+    }
+    
+    .concept-number {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    
+    .concept-desc {
+      color: #9ca3af;
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+    
+    .usage-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .tag {
+      background: #1f1f1f;
+      color: #d1d5db;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+    }
+    
+    .section {
+      margin-bottom: 50px;
+    }
+    
+    .section-title {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #fbbf24;
+    }
+    
+    .usage-examples {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    
+    .usage-card {
+      background: #111111;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #1f1f1f;
+    }
+    
+    .usage-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    
+    .favicon-demo {
+      width: 32px;
+      height: 32px;
+      background: #0a0a0a;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .header-demo {
+      width: 100%;
+      height: 50px;
+      background: #0a0a0a;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 15px;
+      gap: 10px;
+    }
+    
+    .social-demo {
+      width: 80px;
+      height: 80px;
+      background: #0a0a0a;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    
+    .color-palette {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .color-swatch {
+      text-align: center;
+    }
+    
+    .swatch {
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      border: 1px solid #1f1f1f;
+    }
+    
+    .swatch-label {
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+    
+    .swatch-hex {
+      font-size: 0.875rem;
+      color: #ffffff;
+      font-family: monospace;
+    }
+    
+    .recommendation {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.1));
+      border: 1px solid #f59e0b;
+      border-radius: 16px;
+      padding: 30px;
+      margin-top: 40px;
+    }
+    
+    .recommendation h2 {
+      color: #f59e0b;
+      margin-bottom: 15px;
+    }
+    
+    .recommendation ul {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .recommendation li {
+      padding: 8px 0;
+      padding-left: 24px;
+      position: relative;
+      color: #d1d5db;
+    }
+    
+    .recommendation li::before {
+      content: "✦";
+      position: absolute;
+      left: 0;
+      color: #f59e0b;
+    }
+    
+    .wordmark-demo {
+      background: #0a0a0a;
+      border-radius: 12px;
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid #1f1f1f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>WandStore Logo Concepts</h1>
+    <p class="subtitle">Generative UI for e-commerce — personalized storefronts</p>
+    
+    <div class="concept-grid">
+      <!-- Concept 1: Wand Stroke -->
+      <div class="concept-card">
+        <div class="concept-header">
+          <div class="concept-icon">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="wandGradient1" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" style="stop-color:#d97706"/>
+                  <stop offset="50%" style="stop-color:#f59e0b"/>
+                  <stop offset="100%" style="stop-color:#fbbf24"/>
+                </linearGradient>
+              </defs>
+              <path d="M20 80 Q30 50 50 20 Q70 50 80 80" 
+                    stroke="url(#wandGradient1)" stroke-width="8" fill="none" stroke-linecap="round"/>
+              <circle cx="50" cy="20" r="6" fill="#fbbf24"/>
+              <circle cx="45" cy="15" r="2" fill="#fbbf24" opacity="0.6"/>
+              <circle cx="55" cy="18" r="1.5" fill="#fbbf24" opacity="0.4"/>
+            </svg>
+          </div>
+          <div>
+            <div class="concept-number">Concept 1</div>
+            <div class="concept-title">The Wand Stroke</div>
+          </div>
+        </div>
+        <p class="concept-desc">A single elegant stroke forming both a wand and the initial "W". The tapered line suggests motion and generative energy with magical particles.</p>
+        
+        <div class="usage-tags">
+          <span class="tag">Primary Logo</span>
+          <span class="tag">App Icon</span>
+          <span class="tag">Favicon</span>
+        </div>
+      </div>
+      
+      <!-- Concept 2: Portal Shop -->
+      <div class="concept-card">
+        <div class="concept-header">
+          <div class="concept-icon">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="portalGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#f59e0b"/>
+                  <stop offset="100%" style="stop-color:#fbbf24"/>
+                </linearGradient>
+                <radialGradient id="innerGlow2" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:0.4"/>
+                  <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:0.1"/>
+                </radialGradient>
+              </defs>
+              
+              <rect x="15" y="10" width="70" height="80" rx="12" 
+                    stroke="url(#portalGradient2)" stroke-width="6" fill="none"/>
+              <rect x="22" y="17" width="56" height="66" rx="8" 
+                    fill="url(#innerGlow2)"/>
+              <line x1="50" y1="17" x2="50" y2="83" stroke="#0a0a0a" stroke-width="4"/>
+              <circle cx="50" cy="50" r="4" fill="#fbbf24"/>
+            </svg>
+          </div>
+          <div>
+            <div class="concept-number">Concept 2</div>
+            <div class="concept-title">The Portal Shop</div>
+          </div>
+        </div>
+        <p class="concept-desc">A geometric storefront frame doubling as a magical portal. The door is slightly ajar with golden light emanating from within.</p>
+        
+        <div class="usage-tags">
+          <span class="tag">Hero Sections</span>
+          <span class="tag">Social Media</span>
+          <span class="tag">Large Format</span>
+        </div>
+      </div>
+      
+      <!-- Concept 3: Generative Spark -->
+      <div class="concept-card">
+        <div class="concept-header">
+          <div class="concept-icon">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="sparkGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#fbbf24"/>
+                  <stop offset="50%" style="stop-color:#f59e0b"/>
+                  <stop offset="100%" style="stop-color:#d97706"/>
+                </linearGradient>
+              </defs>
+              
+              <path d="M50 8 L54 32 L78 22 L58 42 L92 50 L58 58 L78 78 L54 68 L50 92 L46 68 L22 78 L42 58 L8 50 L42 42 L22 22 L46 32 Z" 
+                    fill="url(#sparkGradient3)"/>
+              <circle cx="50" cy="50" r="14" fill="#111111"/>
+              <circle cx="50" cy="50" r="7" fill="#fbbf24"/>
+            </svg>
+          </div>
+          <div>
+            <div class="concept-number">Concept 3</div>
+            <div class="concept-title">The Generative Spark</div>
+          </div>
+        </div>
+        <p class="concept-desc">An abstract geometric eight-pointed star suggesting both magic and code structure. Symmetrical precision with a glowing center.</p>
+        
+        <div class="usage-tags">
+          <span class="tag">Favicon</span>
+          <span class="tag">App Icon</span>
+          <span class="tag">Watermark</span>
+        </div>
+      </div>
+      
+      <!-- Concept 4: Wordmark -->
+      <div class="concept-card">
+        <div class="concept-header">
+          <div class="concept-icon" style="width: 100px;">
+            <svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="wordmarkGradient4" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" style="stop-color:#d97706"/>
+                  <stop offset="50%" style="stop-color:#f59e0b"/>
+                  <stop offset="100%" style="stop-color:#fbbf24"/>
+                </linearGradient>
+              </defs>
+              
+              <path d="M10 45 Q15 25 25 10 Q35 25 40 45" 
+                    stroke="url(#wordmarkGradient4)" stroke-width="6" fill="none" stroke-linecap="round"/>
+              <path d="M40 45 Q45 25 55 10 Q65 25 70 45" 
+                    stroke="url(#wordmarkGradient4)" stroke-width="6" fill="none" stroke-linecap="round"/>
+              <circle cx="55" cy="10" r="4" fill="#fbbf24"/>
+              
+              <text x="85" y="38" font-family="system-ui, sans-serif" font-size="28" font-weight="500" fill="#ffffff">andStore</text>
+            </svg>
+          </div>
+          <div>
+            <div class="concept-number">Concept 4</div>
+            <div class="concept-title">The Wordmark</div>
+          </div>
+        </div>
+        <p class="concept-desc">Custom typographic treatment where the "W" is stylized as a wand. Clean sans-serif for "andStore" with magical flourishes.</p>
+        
+        <div class="usage-tags">
+          <span class="tag">Website Header</span>
+          <span class="tag">Business Cards</span>
+          <span class="tag">Formal Use</span>
+        </div>
+      </div>
+      
+      <!-- Concept 5: Dynamic Grid -->
+      <div class="concept-card">
+        <div class="concept-header">
+          <div class="concept-icon">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="gridGradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#f59e0b"/>
+                  <stop offset="100%" style="stop-color:#fbbf24"/>
+                </linearGradient>
+              </defs>
+              
+              <rect x="12" y="12" width="22" height="22" rx="4" fill="url(#gridGradient5)"/>
+              <rect x="39" y="12" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.15"/>
+              <rect x="66" y="12" width="22" height="22" rx="4" fill="url(#gridGradient5)"/>
+              
+              <rect x="12" y="39" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.15"/>
+              <rect x="39" y="39" width="22" height="22" rx="4" fill="url(#gridGradient5)"/>
+              <rect x="66" y="39" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.15"/>
+              
+              <rect x="12" y="66" width="22" height="22" rx="4" fill="url(#gridGradient5)"/>
+              <rect x="39" y="66" width="22" height="22" rx="4" fill="#f59e0b" opacity="0.15"/>
+              <rect x="66" y="66" width="22" height="22" rx="4" fill="url(#gridGradient5)"/>
+            </svg>
+          </div>
+          <div>
+            <div class="concept-number">Concept 5</div>
+            <div class="concept-title">The Dynamic Grid</div>
+          </div>
+        </div>
+        <p class="concept-desc">A modular 3x3 grid suggesting storefront layout and generative patterns. Selective cells form an abstract "W" pattern.</p>
+        
+        <div class="usage-tags">
+          <span class="tag">Developer Docs</span>
+          <span class="tag">Patterns</span>
+          <span class="tag">Tech Contexts</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Color Palette -->
+    <div class="section">
+      <h2 class="section-title">Color Palette</h2>
+      <div class="color-palette">
+        <div class="color-swatch">
+          <div class="swatch" style="background: #0a0a0a;"></div>
+          <div class="swatch-label">Primary Dark</div>
+          <div class="swatch-hex">#0a0a0a</div>
+        </div>
+        
+        <div class="color-swatch">
+          <div class="swatch" style="background: #f59e0b;"></div>
+          <div class="swatch-label">Amber Gold</div>
+          <div class="swatch-hex">#f59e0b</div>
+        </div>
+        
+        <div class="color-swatch">
+          <div class="swatch" style="background: #fbbf24;"></div>
+          <div class="swatch-label">Light Gold</div>
+          <div class="swatch-hex">#fbbf24</div>
+        </div>
+        
+        <div class="color-swatch">
+          <div class="swatch" style="background: #d97706;"></div>
+          <div class="swatch-label">Muted Gold</div>
+          <div class="swatch-hex">#d97706</div>
+        </div>
+        
+        <div class="color-swatch">
+          <div class="swatch" style="background: #ffffff;"></div>
+          <div class="swatch-label">Pure White</div>
+          <div class="swatch-hex">#ffffff</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Usage Examples -->
+    <div class="section">
+      <h2 class="section-title">Usage Examples</h2>
+      <div class="usage-examples">
+        <div class="usage-card">
+          <div class="usage-header">
+            <div class="favicon-demo">
+              <svg width="20" height="20" viewBox="0 0 100 100">
+                <path d="M50 8 L54 32 L78 22 L58 42 L92 50 L58 58 L78 78 L54 68 L50 92 L46 68 L22 78 L42 58 L8 50 L42 42 L22 22 L46 32 Z" fill="#f59e0b"/>
+                <circle cx="50" cy="50" r="14" fill="#0a0a0a"/>
+                <circle cx="50" cy="50" r="7" fill="#fbbf24"/>
+              </svg>
+            </div>
+            <span>Favicon (16-32px)</span>
+          </div>
+          <p style="color: #9ca3af; font-size: 0.875rem;">Concept 3 (Generative Spark) works best at small sizes. Clear and recognizable even at 16px.</p>
+        </div>
+        
+        <div class="usage-card">
+          <div class="usage-header">
+            <div class="header-demo">
+              <svg width="24" height="24" viewBox="0 0 100 100">
+                <defs>
+                  <linearGradient id="headerGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#d97706"/>
+                    <stop offset="100%" style="stop-color:#fbbf24"/>
+                  </linearGradient>
+                </defs>
+                <path d="M20 80 Q30 50 50 20 Q70 50 80 80" stroke="url(#headerGrad)" stroke-width="8" fill="none" stroke-linecap="round"/>
+                <circle cx="50" cy="20" r="6" fill="#fbbf24"/>
+              </svg>
+              <span style="color: #ffffff; font-weight: 600;">WandStore</span>
+            </div>
+          </div>
+          <p style="color: #9ca3af; font-size: 0.875rem;">Concept 1 (Wand Stroke) paired with clean typography for website headers.</p>
+        </div>
+        
+        <div class="usage-card">
+          <div class="social-demo">
+            <svg width="50" height="50" viewBox="0 0 100 100">
+              <defs>
+                <linearGradient id="socialGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#f59e0b"/>
+                  <stop offset="100%" style="stop-color:#fbbf24"/>
+                </linearGradient>
+              </defs>
+              
+              <rect x="15" y="10" width="70" height="80" rx="12" stroke="url(#socialGrad)" stroke-width="6" fill="none"/>
+              <rect x="22" y="17" width="56" height="66" rx="8" fill="#f59e0b" opacity="0.15"/>
+              <line x1="50" y1="17" x2="50" y2="83" stroke="#0a0a0a" stroke-width="4"/>
+              <circle cx="50" cy="50" r="4" fill="#fbbf24"/>
+            </svg>
+          </div>
+          <p style="color: #9ca3af; font-size: 0.875rem; text-align: center; margin-top: 10px;">Social Media Avatar</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Wordmark Demo -->
+    <div class="section">
+      <h2 class="section-title">Wordmark</h2>
+      <div class="wordmark-demo">
+        <svg viewBox="0 0 240 60" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
+          <defs>
+            <linearGradient id="demoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#d97706"/>
+              <stop offset="50%" style="stop-color:#f59e0b"/>
+              <stop offset="100%" style="stop-color:#fbbf24"/>
+            </linearGradient>
+          </defs>
+          
+          <g transform="translate(5, 5)">
+            <path d="M10 45 Q15 25 25 10 Q35 25 40 45" stroke="url(#demoGrad)" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <path d="M40 45 Q45 25 55 10 Q65 25 70 45" stroke="url(#demoGrad)" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <circle cx="55" cy="10" r="4" fill="#fbbf24"/>
+            <circle cx="52" cy="6" r="1.5" fill="#fbbf24" opacity="0.6"/>
+            <circle cx="58" cy="8" r="1" fill="#fbbf24" opacity="0.4"/>
+          </g>
+          
+          <text x="85" y="42" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="32" font-weight="500" fill="#ffffff" letter-spacing="0.02em">andStore</text>
+        </svg>
+      </div>
+    </div>
+    
+    <!-- Recommendations -->
+    <div class="recommendation">
+      <h2>✦ Recommendations</h2>
+      <ul>
+        <li><strong>Primary Logo:</strong> Concept 1 (Wand Stroke) — Most versatile, distinctive, and scalable. Captures the magic metaphor elegantly.</li>
+        <li><strong>Secondary/Icon:</strong> Concept 3 (Generative Spark) — Excellent for favicon, app icon, and small applications. Recognizable at 16px.</li>
+        <li><strong>Wordmark:</strong> Concept 4 — For formal contexts where full brand name is needed. Professional with subtle brand personality.</li>
+        <li><strong>Special Applications:</strong> Concept 2 for hero sections; Concept 5 for developer docs and technical contexts.</li>
+      </ul>
+    </div>
+    
+  </div>
+</body>
+</html>
